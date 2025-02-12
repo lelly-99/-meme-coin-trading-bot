@@ -26,7 +26,7 @@ A trading bot that can scans for new meme coins, filter them based on specific c
 
 1. Clone the repository:
 ```bash
-git clone [https://github.com/lelly-99/-meme-coin-trading-bot.git]
+git clone https://github.com/lelly-99/-meme-coin-trading-bot.git
 cd meme-coin-trading-bot
 ```
 
@@ -41,49 +41,19 @@ PORT=3007
 MONGO_URL=your_mongodb_connection_string
 ```
 
-## API Endpoints
-
-### Scan Meme Coins
-```bash
-GET /fetch-meme-coins
-```
-Scans and returns new meme coins on Solana.
-
-### Trading
-```bash
-# Buy tokens
-POST /trade/:tokenAddress
-{
-    "action": "BUY",
-    "amount": 0.1
-}
-
-# Sell tokens
-POST /trade/:tokenAddress
-{
-    "action": "SELL",
-    "amount": 1000000
-}
-```
-
-### Check Balances
-```bash
-GET /balances
-```
-
-### View Trading Opportunities
-```bash
-GET /trading-opportunities
-```
-
-## Usage Examples
+## API Endpoints usage
 
 1. Scan for new meme coins:
 ```bash
 curl http://localhost:3007/fetch-meme-coins
 ```
 
-2. Execute a buy order:
+2. Get trading opportunities:
+```bash
+curl http://localhost:3007/trading-opportunities
+```
+
+3. Execute a buy order:
 ```bash
 curl -X POST http://localhost:3007/trade/TOKEN_ADDRESS \
 -H "Content-Type: application/json" \
@@ -93,7 +63,7 @@ curl -X POST http://localhost:3007/trade/TOKEN_ADDRESS \
 }'
 ```
 
-3. Execute a sell order:
+4. Execute a sell order:
 ```bash
 curl -X POST http://localhost:3007/trade/TOKEN_ADDRESS \
 -H "Content-Type: application/json" \
@@ -103,7 +73,7 @@ curl -X POST http://localhost:3007/trade/TOKEN_ADDRESS \
 }'
 ```
 
-4. Check balances:
+5. Check balances:
 ```bash
 curl http://localhost:3007/balances
 ```
