@@ -1,0 +1,26 @@
+# fetch coins
+curl http://localhost:3007/fetch-meme-coins
+
+
+# get Trading opportunities
+curl http://localhost:3007/trading-opportunities
+
+
+# needs fix to show the token
+curl http://localhost:3007/balances
+
+# Buy tokens
+curl -X POST http://localhost:3007/trade/7tdVnzxy3dFLzRYyGzpzV3gDG8ywReQ3WCowpSUygeTa \
+-H "Content-Type: application/json" \
+-d '{
+    "action": "BUY",
+    "amount": 0.1
+}'
+
+# Sell tokens 
+curl -X POST http://localhost:3007/trade/7tdVnzxy3dFLzRYyGzpzV3gDG8ywReQ3WCowpSUygeTa \
+-H "Content-Type: application/json" \
+-d '{
+    "action": "SELL",
+    "amount": 27394208549
+}'
