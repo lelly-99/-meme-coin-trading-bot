@@ -1,19 +1,42 @@
-import database from "./database.js";
+import axios from 'axios';
 
-const database_instance = database()
+export default function dexscreener() {
+    // Configuration
+    const MAX_RETRIES = 3;
+    const BASE_DELAY = 2000;
+    const TIMEOUT = 10000;
 
-export default function dexscreener () {
-    const fetch_latest_tokens = async () => {
-        try {  
-            const response = await fetch('https://api.dexscreener.com/token-profiles/latest/v1', {
-                method: 'GET',
-                headers: {},
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    async function fetchWithRetry(url, retryCount = 0) {
+        try {
+            const response = await axios.get(url, {
+                timeout: TIMEOUT,
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'Mozilla/5.0' 
+                }
             });
-            const data = await response.json();
-        
+            return response.data;
+        } catch (error) {
+            if (retryCount < MAX_RETRIES) {
+                const delay = BASE_DELAY * Math.pow(2, retryCount);
+                console.log(`Attempt ${retryCount + 1} failed. Retrying in ${delay/1000} seconds...`);
+                await sleep(delay);
+                return fetchWithRetry(url, retryCount + 1);
+            }
+            throw error;
+        }
+    }
+
+    const fetch_latest_tokens = async () => {
+        try {
+            console.log('Scanning for new tokens...');
+            
+            const data = await fetchWithRetry('https://api.dexscreener.com/token-profiles/latest/v1');
+            
             const meme_coin_keywords = ['meme', 'pepe', 'trump', 'dog', 'shiba', 'doge', 'moon', 'rocket', 'lfg', 'jeet', 'woof', 'based'];
             
-            //filter solana meme coins
             const solana_meme_coins = data.filter(coin => 
                 coin?.chainId === 'solana' &&
                 coin?.description &&
@@ -21,20 +44,24 @@ export default function dexscreener () {
                     coin.description.toLowerCase().includes(keyword)
                 )
             );
-        
-            // Get market data for each token
+
+            console.log(`Found ${solana_meme_coins.length} potential meme coins`);
+            
             const processed_tokens = [];
             
             for (const meme_coin of solana_meme_coins) {
                 if (!meme_coin.tokenAddress) continue;
 
                 try {
-                    const market_response = await fetch(
+                    // Add delay between requests to avoid rate limits
+                    await sleep(1000);
+
+                    console.log(`Analyzing token: ${meme_coin.tokenAddress}`);
+                    
+                    const market_data = await fetchWithRetry(
                         `https://api.dexscreener.com/latest/dex/tokens/${meme_coin.tokenAddress}`
                     );
-                    const market_data = await market_response.json();
 
-                    // Validate market data
                     if (!market_data?.pairs?.[0]) {
                         console.log(`No market data for ${meme_coin.tokenAddress}`);
                         continue;
@@ -42,8 +69,8 @@ export default function dexscreener () {
 
                     const pair_data = market_data.pairs[0];
 
-                    // Create combined data object
-                    const token_data = {
+
+                    processed_tokens.push({
                         tokenAddress: meme_coin.tokenAddress,
                         chainId: meme_coin.chainId,
                         name: pair_data.baseToken?.name || meme_coin.name,
@@ -61,26 +88,23 @@ export default function dexscreener () {
                         fdv: pair_data.fdv,
                         pairCreatedAt: pair_data.pairCreatedAt,
                         info: pair_data.info
-                    };
+                    });
 
-                    // Process and store token
-                    const processed_token = await database_instance.process_and_store_token(token_data);
-                    if (processed_token) {
-                        processed_tokens.push(processed_token);
-                    }
                 } catch (error) {
-                    console.error(`Error processing token ${meme_coin.tokenAddress}:`, error);
+                    console.error(`Error processing token ${meme_coin.tokenAddress}:`, error.message);
                 }
             }
             
+            console.log(`Successfully processed ${processed_tokens.length} tokens`);
             return processed_tokens;
-        
+            
         } catch (error) {
             console.error('Error scanning meme coins:', error.message);
-        }   
-    }
+            return [];
+        }
+    };
 
     return {
         fetch_latest_tokens,
-    }
+    };
 }

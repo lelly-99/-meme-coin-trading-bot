@@ -2,30 +2,24 @@ import { Connection, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import axios from 'axios';
 
 class JupiterTrader {
-
-    //wallet balance for now
-    //check out faucet.solana.com - cureently doesn't have access to newly lauched tokens for transaction purposes
     static simulatedBalance = {
-        sol: 5, 
+        sol: 5,
         tokens: new Map(),
         tradeHistory: []
     };
 
-    constructor(wallet) {
+    constructor() {
         this.connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
         this.JUPITER_API_URL = 'https://quote-api.jup.ag/v6';
         this.SOL_MINT = 'So11111111111111111111111111111111111111112';
-        this.wallet = wallet;
     }
 
     async executeBuy(tokenAddress, amountInSol) {
         try {
-            // check SOL balance
             if (amountInSol > JupiterTrader.simulatedBalance.sol) {
                 throw new Error(`Insufficient SOL balance. Have: ${JupiterTrader.simulatedBalance.sol}, Need: ${amountInSol}`);
             }
-
-            //get a real quote from Jupiter
+    
             const response = await axios.get(`${this.JUPITER_API_URL}/quote`, {
                 params: {
                     inputMint: this.SOL_MINT,
@@ -34,16 +28,25 @@ class JupiterTrader {
                     slippageBps: 100
                 }
             });
-
+    
             const quote = response.data;
-
-            //make the trade
+            
+            // Calculate price in USD
+            const price = quote.outAmount > 0 ? 
+                (amountInSol * LAMPORTS_PER_SOL) / quote.outAmount : 
+                0;
+    
+            console.log('Buy Quote:', {
+                outAmount: quote.outAmount,
+                price: price,
+                priceImpact: quote.priceImpactPct
+            });
+    
             JupiterTrader.simulatedBalance.sol -= amountInSol;
             const currentTokenBalance = JupiterTrader.simulatedBalance.tokens.get(tokenAddress) || 0;
             const newTokenBalance = currentTokenBalance + Number(quote.outAmount);
             JupiterTrader.simulatedBalance.tokens.set(tokenAddress, newTokenBalance);
-
-            // Record trade in history
+    
             const tradeRecord = {
                 timestamp: new Date(),
                 type: 'BUY',
@@ -52,11 +55,13 @@ class JupiterTrader {
                 inputToken: 'SOL',
                 outputAmount: quote.outAmount,
                 outputToken: tokenAddress,
-                price: quote.priceUsd,
+                price: price,
                 priceImpact: quote.priceImpactPct
             };
             JupiterTrader.simulatedBalance.tradeHistory.push(tradeRecord);
-
+    
+            console.log('Buy trade recorded:', tradeRecord);
+    
             return {
                 success: true,
                 type: 'BUY',
@@ -68,29 +73,27 @@ class JupiterTrader {
                     amount: quote.outAmount,
                     token: tokenAddress
                 },
-                price: quote.priceUsd,
+                price: price,
                 priceImpact: quote.priceImpactPct,
                 simulatedBalances: {
                     sol: JupiterTrader.simulatedBalance.sol,
                     token: newTokenBalance
                 }
             };
-
+    
         } catch (error) {
-            console.error('Simulated buy failed:', error.message);
+            console.error('Buy execution failed:', error.message);
             throw error;
         }
     }
-
+    
     async executeSell(tokenAddress, tokenAmount) {
         try {
-            //check token balance
             const currentTokenBalance = JupiterTrader.simulatedBalance.tokens.get(tokenAddress) || 0;
             if (tokenAmount > currentTokenBalance) {
                 throw new Error(`Insufficient token balance. Have: ${currentTokenBalance}, Need: ${tokenAmount}`);
             }
-
-            //get quote from Jupiter
+    
             const response = await axios.get(`${this.JUPITER_API_URL}/quote`, {
                 params: {
                     inputMint: tokenAddress,
@@ -99,16 +102,31 @@ class JupiterTrader {
                     slippageBps: 100
                 }
             });
-
+    
             const quote = response.data;
             const solReceived = quote.outAmount / LAMPORTS_PER_SOL;
-
-            //trade
+    
+            // Calculate price in USD
+            const price = tokenAmount > 0 ? 
+                quote.outAmount / tokenAmount : 
+                0;
+    
+            console.log('Sell Quote:', {
+                outAmount: quote.outAmount,
+                price: price,
+                priceImpact: quote.priceImpactPct
+            });
+    
             const newTokenBalance = currentTokenBalance - tokenAmount;
             JupiterTrader.simulatedBalance.tokens.set(tokenAddress, newTokenBalance);
             JupiterTrader.simulatedBalance.sol += solReceived;
-
-            //record trade
+    
+            const buyTrade = JupiterTrader.simulatedBalance.tradeHistory.find(
+                trade => trade.tokenAddress === tokenAddress && trade.type === 'BUY'
+            );
+            const buyPrice = buyTrade ? parseFloat(buyTrade.price) : 0;
+            const roi = buyPrice ? ((price - buyPrice) / buyPrice) * 100 : 0;
+    
             const tradeRecord = {
                 timestamp: new Date(),
                 type: 'SELL',
@@ -117,11 +135,14 @@ class JupiterTrader {
                 inputToken: tokenAddress,
                 outputAmount: solReceived,
                 outputToken: 'SOL',
-                price: quote.priceUsd,
-                priceImpact: quote.priceImpactPct
+                price: price,
+                priceImpact: quote.priceImpactPct,
+                roi: roi
             };
             JupiterTrader.simulatedBalance.tradeHistory.push(tradeRecord);
-
+    
+            console.log('Sell trade recorded:', tradeRecord);
+    
             return {
                 success: true,
                 type: 'SELL',
@@ -133,38 +154,33 @@ class JupiterTrader {
                     amount: solReceived,
                     token: 'SOL'
                 },
-                price: quote.priceUsd,
+                price: price,
                 priceImpact: quote.priceImpactPct,
+                roi: roi,
                 simulatedBalances: {
                     sol: JupiterTrader.simulatedBalance.sol,
                     token: newTokenBalance
                 }
             };
-
+    
         } catch (error) {
-            console.error('Simulated sell failed:', error.message);
+            console.error('Sell execution failed:', error.message);
+            throw error;
         }
+    }
+    async getTokenBalance(tokenAddress) {
+        return JupiterTrader.simulatedBalance.tokens.get(tokenAddress) || 0;
     }
 
     async getSolBalance() {
         return JupiterTrader.simulatedBalance.sol;
     }
 
-    async getTokenBalance(tokenAddress) {
-        return JupiterTrader.simulatedBalance.tokens.get(tokenAddress) || 0;
-    }
-
     async getAllBalances() {
-        const balances = {
+        return {
             sol: JupiterTrader.simulatedBalance.sol,
-            tokens: {}
+            tokens: Object.fromEntries(JupiterTrader.simulatedBalance.tokens)
         };
-
-        for (const [token, amount] of JupiterTrader.simulatedBalance.tokens) {
-            balances.tokens[token] = amount;
-        }
-
-        return balances;
     }
 
     async getTradeHistory() {

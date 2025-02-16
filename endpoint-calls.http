@@ -1,26 +1,41 @@
-# fetch coins
-curl http://localhost:3007/fetch-meme-coins
+# # fetch coins
+# curl http://localhost:3007/fetch-meme-coins
 
 
-# get Trading opportunities
-curl http://localhost:3007/trading-opportunities
+# # get Trading opportunities
+# curl http://localhost:3007/trading-opportunities
 
 
-# needs fix to show the token
-curl http://localhost:3007/balances
+# # needs fix to show the token
+# curl http://localhost:3007/balances
 
-# Buy tokens
-curl -X POST http://localhost:3007/trade/7tdVnzxy3dFLzRYyGzpzV3gDG8ywReQ3WCowpSUygeTa \
--H "Content-Type: application/json" \
--d '{
-    "action": "BUY",
-    "amount": 0.1
-}'
+# # Buy tokens
+# curl -X POST http://localhost:3007/trade/7tdVnzxy3dFLzRYyGzpzV3gDG8ywReQ3WCowpSUygeTa \
+# -H "Content-Type: application/json" \
+# -d '{
+#     "action": "BUY",
+#     "amount": 0.1
+# }'
 
-# Sell tokens 
-curl -X POST http://localhost:3007/trade/7tdVnzxy3dFLzRYyGzpzV3gDG8ywReQ3WCowpSUygeTa \
--H "Content-Type: application/json" \
--d '{
-    "action": "SELL",
-    "amount": 27394208549
-}'
+# # Sell tokens 
+# curl -X POST http://localhost:3007/trade/7tdVnzxy3dFLzRYyGzpzV3gDG8ywReQ3WCowpSUygeTa \
+# -H "Content-Type: application/json" \
+# -d '{
+#     "action": "SELL",
+#     "amount": 873622844540
+# }'
+
+# Start server
+
+
+# Check status
+# curl http://localhost:3000/status
+
+# # Start trading
+# curl -X POST http://localhost:3000/start
+
+# # Stop trading
+# curl -X POST http://localhost:3000/stop
+
+# # View trades
+# curl http://localhost:3000/trades
